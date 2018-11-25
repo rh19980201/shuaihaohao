@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="GBK"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/aop
+        http://www.springframework.org/schema/aop/spring-aop-4.0.xsd
+
+        http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+
+        http://www.springframework.org/schema/tx
+        http://www.springframework.org/schema/tx/spring-tx-4.0.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context-4.0.xsd">
+    <!-- 引入属性文件        -->
+    <context:property-placeholder
+            location="classpath:spring/datasource.properties"/>
+
+
+    <!-- 配置数据源    bean的id 对应 id为sqlsession中的ref这个属性  -->
+    <bean id="dataSource"
+          class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+        <property name="url">
+            <!--  这些值就是从我们属性文件中取出来的-->
+            <value>${jdbc.dbcp.fh.url}</value>
+        </property>
+        <property name="driverClassName">
+            <value>${jdbc.driverClassName}</value>
+        </property>
+        <property name="username">
+            <value>${jdbc.username}</value>
+        </property>
+        <property name="password">
+            <value>${jdbc.password}</value>
+        </property>
+        <!-- 连接池中的最大的连接数 -->
+        <property name="maxActive">
+            <value>${jdbc.maxActive}</value>
+        </property>
+        <!-- 最大等待的时间 (单位:毫秒) -->
+        <property name="maxWait">
+            <value>${jdbc.maxWait}</value>
+        </property>
+    </bean>
+
+
+    <!--生成sqlsession -->
+    <bean id="sqlSession"
+          class="org.mybatis.spring.SqlSessionFactoryBean">
+        <!-- 对应数据源 的bean的id -->
+        <property
+                name="dataSource"
+                ref="dataSource"/>
+        <!--如果在这里选的自动创建别名  在mapper文件中就需要写类的全称  如果配置了只需要写别名即可  -->
+        <!-- 为 com.jk.model所有的实体bean自动创建别名。Book:book  UserInfo:userInfo-->
+        <property
+                name="typeAliasesPackage"
+                value="com.fh.admin.po"></property>
+        <!--  自动查找mybatis的xml配置文件，省掉sqlMapConfig.xml里的mappers手工配置 -->
+        <property
+                name="mapperLocations"
+                value="classpath:mappers/*.xml"/>
+    </bean>
+
+    <!-- 通过 MapperScannerConfigurer自动扫描指定basePackage中的所有的接口，并且
+    把sqlSession与接口结合-->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <!-- 扫描我们的数据库持久层  -->
+        <property
+                name="basePackage"
+                value="com.fh.admin.mapper"/>
+        <property
+                name="sqlSessionFactoryBeanName"
+                value="sqlSession"/>
+    </bean>
+
+    <!--扫描service  让service中的@service的注解生效  -->
+    <context:component-scan
+            base-package="com.fh.admin.biz"/>
+
+
+    <!-- (事务管理)transaction manager, use JtaTransactionManager for global tx -->
+    <bean id="transactionManager"
+          class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property
+                name="dataSource"
+                ref="dataSource"/>
+    </bean>
+
+    <!-- 定义advice,配置传播特性、事务隔离级别、只读事务、回滚策略 -->
+    <tx:advice
+            id="txAdvice"
+            transaction-manager="transactionManager">
+        <tx:attributes>
+            <tx:method
+                    name="insert*"
+                    propagation="REQUIRED"
+                    rollback-for="Exception"/>
+            <tx:method
+                    name="update*"
+                    propagation="REQUIRED"
+                    rollback-for="Exception"/>
+            <tx:method
+                    name="delete*"
+                    propagation="REQUIRED"
+                    rollback-for="Exception"/>
+            <tx:method
+                    name="add*"
+                    propagation="REQUIRED"
+                    rollback-for="Exception"/>
+            <tx:method
+                    name="export*"
+                    propagation="REQUIRED"
+                    rollback-for="Exception"/>
+            <tx:method
+                    name="*"
+                    propagation="REQUIRED"
+                    read-only="true"/>
+        </tx:attributes>
+    </tx:advice>
+
+    <!-- 配置 Spring 的声明式事务 -->
+    <!-- 定义那些类使用事务 -->
+    <aop:config>
+        <aop:advisor
+                pointcut="execution(* com.fh.admin.biz..*.*(..))"
+                advice-ref="txAdvice"/>
+    </aop:config>
+
+</beans>
